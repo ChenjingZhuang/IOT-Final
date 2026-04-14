@@ -45,6 +45,7 @@ void setup() {
   Serial.println(" Connected!");
 
   mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
+  
   Serial.print("Connecting to Adafruit IO");
   while (!mqttClient.connected()) {
     if (mqttClient.connect(AIO_USERNAME, AIO_USERNAME, AIO_KEY)) {
@@ -68,27 +69,57 @@ void loop() {
   TempAndHumidity data = mySensor.getTempAndHumidity();
   float temperature = data.temperature;
   float humidity = data.humidity;
+  bool tooHot = temperature > TEMP_THRESHOLD;
+  bool tooHumid = humidity > HUM_THRESHOLD;
+  // check FIRST
+
+  if (isnan(temperature) || isnan(humidity)) {
+    Serial.println("Sensor error!");
+    return;
+  }
 
   // Publish to Adafruit IO
   mqttClient.publish((String(AIO_USERNAME) + "/feeds/" + FEED_TEMP).c_str(), String(temperature, 2).c_str());
   mqttClient.publish((String(AIO_USERNAME) + "/feeds/" + FEED_HUM).c_str(), String(humidity, 1).c_str());
 
-  if (temperature > TEMP_THRESHOLD || humidity > HUM_THRESHOLD) {
-    // Bad environment → RED
+  if (tooHot && tooHumid) {
+    // BOTH bad → PURPLE
+    digitalWrite(RED_LED, HIGH);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(BLUE_LED, HIGH);
+
+  } else if (tooHot) {
+    // Too hot → RED
     digitalWrite(RED_LED, HIGH);
     digitalWrite(GREEN_LED, LOW);
     digitalWrite(BLUE_LED, LOW);
+
+  } else if (tooHumid) {
+    // Too humid → BLUE
+    digitalWrite(RED_LED, LOW);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(BLUE_LED, HIGH);
+
   } else {
-    // Good environment → GREEN
+    // Good → GREEN
     digitalWrite(RED_LED, LOW);
     digitalWrite(GREEN_LED, HIGH);
     digitalWrite(BLUE_LED, LOW);
-  }
 
+  }
 
   Serial.println("---");
   Serial.println("Temperature: " + String(temperature, 2) + "°C");
   Serial.println("Humidity: " + String(humidity, 1) + "%");
+  if (tooHot && tooHumid) {
+    Serial.println("Status: HOT + HUMID");
+  } else if (tooHot) {
+    Serial.println("Status: HOT");
+  } else if (tooHumid) {
+    Serial.println("Status: HUMID");
+  } else {
+    Serial.println("Status: GOOD");
+  }
 
   delay(2000); 
-  }
+}
