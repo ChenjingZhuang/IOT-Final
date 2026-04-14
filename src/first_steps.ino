@@ -91,3 +91,4 @@ void loop() {
   Serial.println("Humidity: " + String(humidity, 1) + "%");
 
   delay(2000); 
+  }
