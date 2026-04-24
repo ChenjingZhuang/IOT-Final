@@ -82,3 +82,9 @@ The system provides real-time insight into environmental conditions.
 ## 📸 Output Result
 
 ![IoT Test Result](io_test_result.png)
+
+
+
+## 🎬 Demo Video
+
+[![Watch Demo](wokwi_test_result.png)](https://raw.githubusercontent.com/ChenjingZhuang/IOT-Final/main/demo%20video.mp4)
