@@ -1,3 +1,4 @@
+#include "secrets.h"
 #include <WiFi.h>
 #include "DHTesp.h"
 #include <PubSubClient.h>
@@ -10,12 +11,6 @@
 #define TEMP_THRESHOLD 25.0 
 #define HUM_THRESHOLD 70.0  
 
-const char* WIFI_SSID = "Wokwi-GUEST";
-const char* WIFI_PASSWORD = "";
-
-// Adafruit IO MQTT
-const char* AIO_USERNAME = "chenj";
-const char* AIO_KEY = "aio_eBMR04zT5tYqcWZivcdZUhYL00r8";
 const char* FEED_TEMP = "temperature";
 const char* FEED_HUM  = "humidity";
 
@@ -79,9 +74,13 @@ void loop() {
   }
 
   // Publish to Adafruit IO
-  mqttClient.publish((String(AIO_USERNAME) + "/feeds/" + FEED_TEMP).c_str(), String(temperature, 2).c_str());
-  mqttClient.publish((String(AIO_USERNAME) + "/feeds/" + FEED_HUM).c_str(), String(humidity, 1).c_str());
+  String topicTemp = String(AIO_USERNAME) + "/feeds/" + FEED_TEMP;
+  String topicHum  = String(AIO_USERNAME) + "/feeds/" + FEED_HUM;
 
+if (mqttClient.connected()) {
+  mqttClient.publish(topicTemp.c_str(), String(temperature, 2).c_str());
+  mqttClient.publish(topicHum.c_str(), String(humidity, 1).c_str());
+}
   if (tooHot && tooHumid) {
     // BOTH bad → PURPLE
     digitalWrite(RED_LED, HIGH);
