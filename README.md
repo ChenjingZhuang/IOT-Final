@@ -87,4 +87,4 @@ The system provides real-time insight into environmental conditions.
 
 ## 🎬 Demo Video
 
-[![Watch Demo](wokwi_test_result.png)](https://raw.githubusercontent.com/ChenjingZhuang/IOT-Final/main/demo%20video.mp4)
+Check the files on itslearning.
