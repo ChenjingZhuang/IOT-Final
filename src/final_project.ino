@@ -9,7 +9,7 @@
 #define BLUE_LED 27      
 
 #define TEMP_THRESHOLD 25.0 
-#define HUM_THRESHOLD 70.0  
+#define HUM_THRESHOLD 65.0  
 
 const char* FEED_TEMP = "temperature";
 const char* FEED_HUM  = "humidity";
