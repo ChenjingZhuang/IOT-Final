@@ -21,7 +21,19 @@ DHTesp mySensor;
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 
-void setup() {
+unsigned long lastReconnectAttempt = 0;
+
+boolean reconnect() {
+  if (mqttClient.connect(AIO_USERNAME, AIO_USERNAME, AIO_KEY)) {
+    Serial.println("MQTT Connected!");
+  } else {
+    Serial.print("MQTT failed, rc=");
+    Serial.println(mqttClient.state());
+  }
+  return mqttClient.connected();
+}
+
+  void setup() {
   Serial.begin(115200);
 
   pinMode(RED_LED, OUTPUT);
@@ -32,6 +44,7 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
   Serial.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED) {
     delay(200);
@@ -40,76 +53,68 @@ void setup() {
   Serial.println(" Connected!");
 
   mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
-  
-  Serial.print("Connecting to Adafruit IO");
-  while (!mqttClient.connected()) {
-    if (mqttClient.connect(AIO_USERNAME, AIO_USERNAME, AIO_KEY)) {
-      Serial.println(" Connected!");
-    } else {
-      Serial.print(" failed, rc=");
-      Serial.print(mqttClient.state());
-      delay(2000);
-    }
-  }
 }
 
+
 void loop() {
+
   if (!mqttClient.connected()) {
-    while (!mqttClient.connect(AIO_USERNAME, AIO_USERNAME, AIO_KEY)) {
-      delay(2000);
+    unsigned long now = millis();
+    if (now - lastReconnectAttempt > 3000) {
+      lastReconnectAttempt = now;
+      reconnect();
     }
+  } else {
+    mqttClient.loop();
   }
-  mqttClient.loop();
 
   TempAndHumidity data = mySensor.getTempAndHumidity();
-  float temperature = data.temperature;
-  float humidity = data.humidity;
-  bool tooHot = temperature > TEMP_THRESHOLD;
-  bool tooHumid = humidity > HUM_THRESHOLD;
-  // check FIRST
 
-  if (isnan(temperature) || isnan(humidity)) {
+  if (isnan(data.temperature) || isnan(data.humidity)) {
     Serial.println("Sensor error!");
+    delay(2000);
     return;
   }
 
-  // Publish to Adafruit IO
-  String topicTemp = String(AIO_USERNAME) + "/feeds/" + FEED_TEMP;
-  String topicHum  = String(AIO_USERNAME) + "/feeds/" + FEED_HUM;
+  float temperature = data.temperature;
+  float humidity = data.humidity;
 
-if (mqttClient.connected()) {
-  mqttClient.publish(topicTemp.c_str(), String(temperature, 2).c_str());
-  mqttClient.publish(topicHum.c_str(), String(humidity, 1).c_str());
-}
+  bool tooHot = temperature > TEMP_THRESHOLD;
+  bool tooHumid = humidity > HUM_THRESHOLD;
+
+  if (mqttClient.connected()) {
+    String topicTemp = String(AIO_USERNAME) + "/feeds/" + FEED_TEMP;
+    String topicHum  = String(AIO_USERNAME) + "/feeds/" + FEED_HUM;
+
+    mqttClient.publish(topicTemp.c_str(), String(temperature, 2).c_str());
+    mqttClient.publish(topicHum.c_str(), String(humidity, 1).c_str());
+  }
+
   if (tooHot && tooHumid) {
-    // BOTH bad → PURPLE
     digitalWrite(RED_LED, HIGH);
     digitalWrite(GREEN_LED, LOW);
     digitalWrite(BLUE_LED, HIGH);
 
   } else if (tooHot) {
-    // Too hot → RED
     digitalWrite(RED_LED, HIGH);
     digitalWrite(GREEN_LED, LOW);
     digitalWrite(BLUE_LED, LOW);
 
   } else if (tooHumid) {
-    // Too humid → BLUE
     digitalWrite(RED_LED, LOW);
     digitalWrite(GREEN_LED, LOW);
     digitalWrite(BLUE_LED, HIGH);
 
   } else {
-    // Good → GREEN
     digitalWrite(RED_LED, LOW);
     digitalWrite(GREEN_LED, HIGH);
     digitalWrite(BLUE_LED, LOW);
-
   }
 
   Serial.println("---");
   Serial.println("Temperature: " + String(temperature, 2) + "°C");
   Serial.println("Humidity: " + String(humidity, 1) + "%");
+
   if (tooHot && tooHumid) {
     Serial.println("Status: HOT + HUMID");
   } else if (tooHot) {
@@ -120,5 +125,5 @@ if (mqttClient.connected()) {
     Serial.println("Status: GOOD");
   }
 
-  delay(2000); 
+  delay(2000);
 }
