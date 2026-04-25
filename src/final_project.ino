@@ -56,7 +56,7 @@ boolean reconnect() {
 }
 
 
-void loop() {
+  void loop() {
 
   if (!mqttClient.connected()) {
     unsigned long now = millis();
